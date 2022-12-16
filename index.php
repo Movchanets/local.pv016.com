@@ -10,84 +10,59 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
 <?php
-
-try {
-    $user = "root";
-    $pass = "";
-    $dbh = new PDO('mysql:host=localhost;dbname=pv016', $user, $pass);
-
-} catch (PDOException $e) {
-    print "Error!: " . $e->getMessage() . "<br/>";
-    die();
-}
-
-
+include($_SERVER['DOCUMENT_ROOT'].'/_header.php');
+include($_SERVER['DOCUMENT_ROOT'].'/options/connection_database.php');
 ?>
 
-
-
-<?php include "_header.php" ?>
 
 <div class="container">
     <h1 class="text-center">Список продуктів</h1>
     <section style="background-color: #eee;">
         <div class="container py-5">
-              <div class="row justify-content-center">
-                <?php foreach ($dbh->query('SELECT * FROM tbl_products') as $row) : ?>
+            <div class="row">
+                <?php
+                $sql='SELECT p.id, p.name, p.price, pi.name as image 
+                        from tbl_products p, tbl_products_images pi 
+                        where p.id=pi.product_id and pi.priority=1;';
+                foreach($dbh->query($sql) as $row) {
+                    $id=$row['id'];
+                    $image = $row["image"];
+                    $name = $row['name'];
+                    $price = $row['price'];
+                    echo'
+                <div class="col-md-6 col-lg-4 mb-4 mb-md-0">
+                    <div class="card">
+                        <img src="/images/'.$image.'"
+                             class="card-img-top" alt="Gaming Laptop"/>
+                        <div class="card-body">
 
-
-                    <div class="col-md-8 col-lg-6 p-2 col-xl-4">
-                        <div class="card" style="border-radius: 15px;">
-                            <div class="bg-image hover-overlay ripple ripple-surface ripple-surface-light"
-                                 data-mdb-ripple-color="light">
-                                <img src="<?php echo $row['image']; ?>"
-                                     style="border-top-left-radius: 15px; border-top-right-radius: 15px;"
-                                     class="img-fluid"
-                                     alt="<?php echo $row['name']; ?>"/>
-                                <a href="#!">
-                                    <div class="mask"></div>
-                                </a>
-                            </div>
-                            <hr class="my-0"/>
-                            <div class="card-body pb-0">
-
-                                <div class="d-flex justify-content-between">
-                                    <div>
-                                        <p><a href="#!" class="text-dark"><?php echo $row['name']; ?></a></p>
-
-                                    </div>
-                                    <div>
-                                        <div class="d-flex justify-content-between">
-                                            <p><a href="#!" class="text-dark">$<?php echo $row['price']; ?></a></p>
-
-                                        </div>
-                                        <div class="d-flex justify-content-between align-items-center pb-2 mb-1">
-
-                                            <button type="button" id ='delete' onclick="Delete(<?php echo $row['id']; ?>);" class="btn btn-danger">Delete</button>
-                                            <button type="button" class="btn btn-primary">Buy now</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-
+                            <div class="d-flex justify-content-between mb-3">
+                                <h5 class="mb-0">'.$name.'</h5>
+                                <h5 class="text-dark mb-0">$'.$price.'</h5>
                             </div>
 
+                            <div class="mb-2 text-end">
+                              <a href="edit.php?id='.$id.'" class="btn btn-success">Змінити</a>
+                                <a href="product.php?id='.$id.'" class="btn btn-success">Купить</a>
+                              
+                            </div>
                         </div>
-
                     </div>
-                <?php endforeach;
-                $dbh = null; ?>
+                </div>
+                    ';
+                }
+                ?>
+
 
             </div>
+        </div>
     </section>
-
 </div>
 
 
-<script src="js/bootstrap.bundle.min.js"></script>
-<script src="js/axios.min.js"></script>
-<script src="js/index.js"></script>
 
+<script src="js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

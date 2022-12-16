@@ -48,3 +48,21 @@ cropper = new Cropper(image, {
        document.getElementById('preview').src = imgdata;
     });
 })
+// <script>
+// var ImgDiv = document.getElementById('images');
+//
+// var input = ImgDiv.children.item(1);
+//
+// function CreateNewInput() {
+//     let newInput = document.createElement('input');
+//     newInput.type = 'file';
+//     newInput.name = 'pictures[]';
+//     newInput.className = 'col-12'
+//
+//     let child = ImgDiv.appendChild(newInput);
+//     child.onchange = CreateNewInput;
+//
+// }
+//
+// input.onchange = CreateNewInput;
+// </script>

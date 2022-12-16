@@ -1,61 +1,28 @@
 <?php
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+include($_SERVER['DOCUMENT_ROOT'] . '/options/connection_database.php');
+$id = $_GET['id'];
+$name = '';
+$price = '';
+$description = '';
+$sql = 'SELECT p.id, p.name, p.price, p.description 
+        from tbl_products p
+        where p.id=:id;';
 
-    $name = $_POST['name'];
-
-    $price = $_POST['price'];
-    $description = $_POST['description'];
-
-    include($_SERVER['DOCUMENT_ROOT'] . '/lib/guidv4.php');
-
-    include($_SERVER['DOCUMENT_ROOT'] . '/options/connection_database.php');
-    $sql = "INSERT INTO `tbl_products` (`name`, `price`, `datecrate`, `description`) VALUES (:name,  :price, NOW(), :description);";
-    $stmt = $dbh->prepare($sql);
-    $stmt->bindParam(':name', $name);
-    $stmt->bindParam(':price', $price);
-    $stmt->bindParam(':description', $description);
-    $stmt->execute();
-    $last_id = $dbh->lastInsertId();
-    $isOK = true;
-    $bigImageString = "";
-
-
-    $counter = 1;
-    foreach ($_FILES["pictures"]["error"] as $key => $error) {
-        if ($error == UPLOAD_ERR_OK) {
-            $tmp_name = $_FILES["pictures"]["tmp_name"][$key];
-            $image_name =
-               guidv4() . '.jpeg';
-            $name = basename($_FILES["pictures"]["name"][$key]);
-
-            // basename() may prevent filesystem traversal attacks;
-            // further validation/sanitation of the filename may be appropriate
-            $sqlImg = 'INSERT INTO `tbl_products_images`
-            (`name`, `priority`, `product_id`)
-            VALUES (:image,  :priority, :id);';
-            $prep = $dbh->prepare($sqlImg);
-            $prep->bindParam(':image',$image_name );
-            $prep->bindParam(':id',$last_id );
-            $prep->bindParam(':priority',$counter );
-
-
-
-            move_uploaded_file($tmp_name,  'images/'.$image_name);
-            $prep->execute();
-            $counter++;
-        }
-    }
-
-
-
-
-     header("Location: /");
-    exit();
+$sth = $dbh->prepare($sql);
+$sth->execute([':id' => $id]);
+if ($row = $sth->fetch()) {
+    $name = $row['name'];
+    $price = $row['price'];
+    $description = $row['description'];
 }
-
+$sql = "SELECT pi.name, pi.priority 
+        FROM tbl_products_images pi
+        WHERE pi.product_id=:id
+        ORDER BY pi.priority;";
+$sth = $dbh->prepare($sql);
+$sth->execute([':id' => $id]);
+$images = $sth->fetchAll();
 ?>
-
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -66,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Головна сторінка</title>
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="sort-list.css"/>
+
     <script>
         function slist(target) {
             // (A) SET CSS + GET ALL LIST ITEMS
@@ -78,7 +45,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             for (let i of items) {
                 // (B1) ATTACH DRAGGABLE
                 i.draggable = true;
-                i.lastChild.id = j++;
+
                 // (B2) DRAG START - YELLOW HIGHLIGHT DROPZONES
                 i.ondragstart = (ev) => {
                     current = i;
@@ -167,32 +134,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <body>
 
 <?php include($_SERVER['DOCUMENT_ROOT'] . '/_header.php'); ?>
-
 <div class="container">
-    <h1 class="text-center">Додати продукт</h1>
+    <h1 class="text-center">Змініти продукт</h1>
     <form method="post" enctype="multipart/form-data" class="col-md-6 offset-md-3">
         <div class="mb-3">
             <label for="name" class="form-label">Назва</label>
-            <input type="text" class="form-control" id="name" name="name">
+            <input type="text" class="form-control" id="name" name="name" value="<?php echo  $name ?>">
         </div>
         <div class="mb-3">
             <label for="price" class="form-label">Ціна</label>
-            <input type="text" class="form-control" id="price" name="price">
+            <input type="text" class="form-control" id="price" value="<?php echo  $price ?>" name="price">
         </div>
         <ul id="sortlist">
-            <li><input type="file" class="form-control" id="native" name="pictures[]"></li>
+            <?php
+            foreach ($images as $image)
+            {
+                echo '<li>
+<label  >
+<img src="images/'.$image["name"].'" class="img">
+<input type="file" class="form-control" id="$image" name="pictures[]"  value='.$image["name"].' style="display: none;">
+</label>
+</li>' ;
+            }
+            ?>
+            <li>
+                <label >
+                <img id = 'img1' alt='add' src="https://placehold.jp/3d4070/ffffff/500x500.png?text=Placeholder" class="img">
+                <input type="file" class="form-control" id="native" name="pictures[]" style="display: none;">
+                </label>
+            </li>
 
         </ul>
 
         <div class="mb-3">
             <label for="description" class="form-label">Опис</label>
-            <input type="text" class="form-control" id="description" name="description">
+            <input type="text" class="form-control" id="description"  value="<?php echo  $description ?>"name="description">
         </div>
 
         <button type="submit" class="btn btn-primary"> Додати</button>
     </form>
 </div>
-
+</body>
 <script src="js/bootstrap.bundle.min.js"></script>
 <script>
     let list = document.getElementById("sortlist")
@@ -200,19 +182,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         slist(list);
     });
     let tmp = document.getElementById('native');
+    let counter = 1;
 
     function CreateNewIMG(e) {
+
         console.log(e.target.value);
         if (e.target.value != "") {
+
             let li = document.createElement('li');
+            let label = document.createElement('label')
+            let img = document.createElement('img');
+            img.src = "https://placehold.jp/3d4070/ffffff/500x500.png?text=Placeholder";
+            img.id  = 'img' + ++counter;
             let newInput = document.createElement('input');
             newInput.type = 'file';
             newInput.name = 'pictures[]';
             newInput.className = 'form-control'
-            // li.draggable = true;
-            li.appendChild(newInput);
+            newInput.style = "display: none;";
+            label.appendChild(img);
+            label.appendChild(newInput);
+            li.appendChild(label);
             let child = list.appendChild(li);
-            child.onchange = CreateNewIMG;
+            child.onchange = (e) => {
+                CreateNewIMG(e);
+                document.getElementById('img'+ counter).src = window.URL.createObjectURL(e.target.files[0])
+            };
             e.target.onchange = null;
 
             slist(list)
@@ -220,7 +214,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     }
 
-    tmp.onchange = CreateNewIMG;
+    tmp.onchange =  (e) => {
+        CreateNewIMG(e);
+        document.getElementById('img'+ 1).src = window.URL.createObjectURL(e.target.files[0])
+    };;
 </script>
-</body>
-</html>
