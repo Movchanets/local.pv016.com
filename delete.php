@@ -1,14 +1,13 @@
 <?php
-$id =  $_POST['id'];
-try {
-    $user = "root";
-    $pass = "";
-    $dbh = new PDO('mysql:host=localhost;dbname=pv016', $user, $pass);
-    $sql = "DELETE FROM tbl_products WHERE id=".$id;
+include($_SERVER['DOCUMENT_ROOT'] . '/options/connection_database.php');
+
+    $id = $_GET['id'];
+    print_r($id);
+    $sql = 'DELETE FROM tbl_products WHERE `tbl_products`.`id` = '.$id;
     $dbh->exec($sql);
-} catch (PDOException $e) {
-    print "Error!: " . $e->getMessage() . "<br/>";
-    die();
-}
-$dbh = null;
+    header("Location: /");
+    exit();
+
 ?>
+
+

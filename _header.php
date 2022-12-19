@@ -13,9 +13,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="add_product.php">Додати продукт</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="drag_and_drop.php">Drag and Drop</a>
-                    </li>
+
                 </ul>
                 <ul class="navbar-nav">
                     <li class="nav-item">

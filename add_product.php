@@ -1,60 +1,49 @@
 <?php
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
+if($_SERVER["REQUEST_METHOD"]=="POST") {
     $name = $_POST['name'];
-
     $price = $_POST['price'];
     $description = $_POST['description'];
+    //print_r([$name, $price, $description]);
 
-    include($_SERVER['DOCUMENT_ROOT'] . '/lib/guidv4.php');
 
-    include($_SERVER['DOCUMENT_ROOT'] . '/options/connection_database.php');
-    $sql = "INSERT INTO `tbl_products` (`name`, `price`, `datecrate`, `description`) VALUES (:name,  :price, NOW(), :description);";
+    include($_SERVER['DOCUMENT_ROOT'].'/options/connection_database.php');
+    $sql = "INSERT INTO `tbl_products` (`name`, `price`, `datecrate`, `description`) VALUES (:name, :price, NOW(), :description);";
     $stmt = $dbh->prepare($sql);
     $stmt->bindParam(':name', $name);
     $stmt->bindParam(':price', $price);
     $stmt->bindParam(':description', $description);
     $stmt->execute();
-    $last_id = $dbh->lastInsertId();
-    $isOK = true;
-    $bigImageString = "";
 
+    include($_SERVER['DOCUMENT_ROOT'].'/lib/guidv4.php');
+    $sql = "SELECT LAST_INSERT_ID() as id;";
+    $item = $dbh->query($sql)->fetch();
+    $insert_id = $item['id'];
 
-    $counter = 1;
-    foreach ($_FILES["pictures"]["error"] as $key => $error) {
-        if ($error == UPLOAD_ERR_OK) {
-            $tmp_name = $_FILES["pictures"]["tmp_name"][$key];
-            $image_name =
-               guidv4() . '.jpeg';
-            $name = basename($_FILES["pictures"]["name"][$key]);
-
-            // basename() may prevent filesystem traversal attacks;
-            // further validation/sanitation of the filename may be appropriate
-            $sqlImg = 'INSERT INTO `tbl_products_images`
-            (`name`, `priority`, `product_id`)
-            VALUES (:image,  :priority, :id);';
-            $prep = $dbh->prepare($sqlImg);
-            $prep->bindParam(':image',$image_name );
-            $prep->bindParam(':id',$last_id );
-            $prep->bindParam(':priority',$counter );
-
-
-
-            move_uploaded_file($tmp_name,  'images/'.$image_name);
-            $prep->execute();
-            $counter++;
-        }
+    $images = $_POST['images'];
+    $count=1;
+    foreach ($images as $base64) {
+        $dir_save = 'images/';
+        $image_name = guidv4() . '.jpeg';
+        $uploadfile = $dir_save . $image_name;
+        list(, $data) = explode(',', $base64);
+        $data = base64_decode($data);
+        file_put_contents($uploadfile, $data);
+        $sql = 'INSERT INTO tbl_products_images (name, datecreate, priority, product_id) VALUES(:name, NOW(), :priority, :product_id);';
+        $stmt = $dbh->prepare($sql);
+        $stmt->bindParam(':name', $image_name);
+        $stmt->bindParam(':priority', $count);
+        $stmt->bindParam(':product_id', $insert_id);
+        $stmt->execute();
+        $count++;
     }
 
 
 
-
-     header("Location: /");
+    header("Location: /");
     exit();
+
 }
-
 ?>
-
 
 <!doctype html>
 <html lang="en">
@@ -65,108 +54,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Головна сторінка</title>
     <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/font-awesome.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="sort-list.css"/>
-    <script>
-        function slist(target) {
-            // (A) SET CSS + GET ALL LIST ITEMS
-            target.classList.add("slist");
-            let items = target.getElementsByTagName("li"), current = null;
 
-            // (B) MAKE ITEMS DRAGGABLE + SORTABLE
-            let j = 1;
-            for (let i of items) {
-                // (B1) ATTACH DRAGGABLE
-                i.draggable = true;
-                i.lastChild.id = j++;
-                // (B2) DRAG START - YELLOW HIGHLIGHT DROPZONES
-                i.ondragstart = (ev) => {
-                    current = i;
-                    for (let it of items) {
-                        if (it != current) {
-                            it.classList.add("hint");
-                        }
-                    }
-                };
-
-                // (B3) DRAG ENTER - RED HIGHLIGHT DROPZONE
-                i.ondragenter = (ev) => {
-                    if (i != current) {
-                        i.classList.add("active");
-                    }
-                };
-
-                // (B4) DRAG LEAVE - REMOVE RED HIGHLIGHT
-                i.ondragleave = () => {
-                    i.classList.remove("active");
-                };
-
-                // (B5) DRAG END - REMOVE ALL HIGHLIGHTS
-                i.ondragend = () => {
-                    for (let it of items) {
-                        it.classList.remove("hint");
-                        it.classList.remove("active");
-                    }
-                };
-
-                // (B6) DRAG OVER - PREVENT THE DEFAULT "DROP", SO WE CAN DO OUR OWN
-                i.ondragover = (evt) => {
-                    evt.preventDefault();
-                };
-
-                // (B7) ON DROP - DO SOMETHING
-                i.ondrop = (evt) => {
-                    evt.preventDefault();
-                    if (i != current) {
-                        let currentpos = 0, droppedpos = 0;
-                        for (let it = 0; it < items.length; it++) {
-                            if (current == items[it]) {
-                                currentpos = it;
-                            }
-                            if (i == items[it]) {
-                                droppedpos = it;
-                            }
-                        }
-                        if (currentpos < droppedpos) {
-                            i.parentNode.insertBefore(current, i.nextSibling);
-                        } else {
-                            i.parentNode.insertBefore(current, i);
-                        }
-                    }
-                };
-            }
-        }
-    </script>
-    <style>
-        /* (A) LIST STYLES */
-        .slist {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .slist li {
-            margin: 10px;
-            padding: 15px;
-            border: 1px solid #dfdfdf;
-            background: #f5f5f5;
-        }
-
-        /* (B) DRAG-AND-DROP HINT */
-        .slist li.hint {
-            border: 1px solid #ffc49a;
-            background: #feffb4;
-        }
-
-        .slist li.active {
-            border: 1px solid #ffa5a5;
-            background: #ffe7e7;
-        }
-    </style>
 </head>
 <body>
 
-<?php include($_SERVER['DOCUMENT_ROOT'] . '/_header.php'); ?>
+<?php include($_SERVER['DOCUMENT_ROOT'].'/_header.php'); ?>
 
 <div class="container">
     <h1 class="text-center">Додати продукт</h1>
@@ -179,11 +73,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <label for="price" class="form-label">Ціна</label>
             <input type="text" class="form-control" id="price" name="price">
         </div>
-        <ul id="sortlist">
-            <li><input type="file" class="form-control" id="native" name="pictures[]"></li>
+        <div class="mb-3">
+            <div class="container">
+                <div class="row" id="list_images">
 
-        </ul>
+                    <div class="col-md-3" id="selectImages">
+                        <label for="image" style="cursor: pointer;" class="form-label text-success">
+                            <i class="fa fa-plus-square-o" style="font-size:120px" aria-hidden="true"></i>
+                        </label>
+                        <input type="file" class="form-control d-none" id="image" multiple>
+                    </div>
+                </div>
 
+            </div>
+        </div>
         <div class="mb-3">
             <label for="description" class="form-label">Опис</label>
             <input type="text" class="form-control" id="description" name="description">
@@ -194,33 +97,80 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </div>
 
 <script src="js/bootstrap.bundle.min.js"></script>
+<script src="js/jquery.min.js"></script>
+
 <script>
-    let list = document.getElementById("sortlist")
-    window.addEventListener("DOMContentLoaded", () => {
-        slist(list);
-    });
-    let tmp = document.getElementById('native');
-
-    function CreateNewIMG(e) {
-        console.log(e.target.value);
-        if (e.target.value != "") {
-            let li = document.createElement('li');
-            let newInput = document.createElement('input');
-            newInput.type = 'file';
-            newInput.name = 'pictures[]';
-            newInput.className = 'form-control'
-            // li.draggable = true;
-            li.appendChild(newInput);
-            let child = list.appendChild(li);
-            child.onchange = CreateNewIMG;
-            e.target.onchange = null;
-
-            slist(list)
-        }
-
+    function uuidv4() {
+        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+        );
     }
+    $(function (){
+        //-----------------------SELECT IMAGES LIST---------------------------
+        const image = document.getElementById("image");
+        image.onchange = function (e) {
+            const files = e.target.files;
+            for (let i = 0; i < files.length; i++) {
+                const reader = new FileReader();
+                reader.addEventListener('load', function () {
+                    const base64 = reader.result;
+                    const id = uuidv4();
+                    const data = `
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="fs-4 ms-2">
+                                    <label for="${id}">
+                                        <i class="fa fa-pencil" style="cursor: pointer;" aria-hidden="true"></i>
+                                    </label>
+                                    <input type="file" class="form-control d-none edit" id="${id}">
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-end fs-4 text-danger me-2 remove">
+                                    <i class="fa fa-times" style="cursor: pointer" aria-hidden="true"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <img src="${base64}" id="${id}_image" alt="photo" width="100%">
+                            <input type="hidden" id="${id}_file" value="${base64}" name="images[]">
+                        </div>
+                    `;
+                    const item = document.createElement('div');
+                    item.className = "col-md-3 item-image";
+                    item.innerHTML = data;
+                    $("#selectImages").before(item);
+                });
+                const file = files[i];
+                if (file)
+                    reader.readAsDataURL(file);
+            }
+            image.value = "";
+        }
+        //-----------------------REMOVE ITEM BY LIST---------------------------------------------
+        $("#list_images").on('click', '.remove', function () {
+            $(this).closest('.item-image').remove();
+        });
 
-    tmp.onchange = CreateNewIMG;
+        //-----------------------CHANGE IMAGE LIST ITEM-------------------------------------
+        let edit_id = 0;
+        const reader = new FileReader();
+        reader.addEventListener('load', () => {
+            const base64 = reader.result;
+            document.getElementById(`${edit_id}_image`).src = base64;
+            document.getElementById(`${edit_id}_file`).value = base64;
+        });
+
+
+        $("#list_images").on('change', '.edit', function (e) {
+            edit_id = e.target.id;
+            const file = e.target.files[0];
+            reader.readAsDataURL(file);
+            this.value = "";
+        });
+
+    });
 </script>
+
 </body>
 </html>
